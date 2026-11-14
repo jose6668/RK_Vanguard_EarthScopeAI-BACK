@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+# raw NASA downloads and decoded caches (the compressed dataset in data/dataset/ IS in git)
+data/raw/
+data/global/
+data/.cache/
+build/
+logs/
+.claude/

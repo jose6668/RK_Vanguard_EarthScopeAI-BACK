@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, Develop]
+
+jobs:
+  backend:
+    name: Backend (science + API)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-backend.txt
+      - run: pip install -r requirements-backend.txt
+      - name: Science tests (sample data, fast)
+        env:
+          EARTHSCOPE_DATA: sample
+        run: |
+          python tests/test_trends.py
+          python tests/test_whatif.py
+          python tests/test_global_trends.py
+          python tests/test_area.py
+      - name: API contract (sample data)
+        env:
+          EARTHSCOPE_DATA: sample
+        run: python tests/test_api.py
+      - name: Full dataset in git decodes and answers
+        env:
+          EARTHSCOPE_DATA: full
+        run: python tests/test_dataset.py
