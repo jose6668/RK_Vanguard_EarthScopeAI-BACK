@@ -11,6 +11,17 @@ uvicorn api.main:app --reload --port 8000      # documentación interactiva: htt
 | GET | `/api/v1/health` | — | Meses disponibles por variable |
 | GET | `/api/v1/variables` | — | Catálogo `GLOBAL_VARIABLES` |
 | POST | `/api/v1/area/analyze` | `{variable, geometry?: GeoJSON Polygon, point?: {lat,lng}, alpha?}` | Serie, tendencia, robustez y advertencias, o `{ok:false, reason}` |
+| GET | `/api/v1/forecast` | — | Años y variables de la proyección de la red neuronal; `status: "experimental"`, advertencia y horizonte validado (1 mes) |
+| GET | `/api/v1/forecast/map/{var}/{year}.png` | `min`, `max` (escala de la web) | Mapa anual proyectado; más transparente donde el ensemble duda más |
+| GET | `/api/v1/forecast/point/{var}` | `lat`, `lng` | Proyección anual en un punto, con dispersión del ensemble y advertencia |
+| GET | `/api/v1/events` | — | Eventos naturales activos (NASA EONET: incendios, tormentas, volcanes…), caché de 30 min |
+| GET | `/api/v1/satellites` | — | TLE de satélites (ISS, Terra, Aqua…) desde CelesTrak, caché de 6 h |
+| POST | `/api/v1/agent/chat` | `{message, session, context?}` | Respuesta del agente y `actions` que la web ejecuta en el globo. 503 sin `requirements-agent.txt` o sin API key |
+| POST | `/api/v1/agent/voice` | audio WAV en el cuerpo, `session`, `context` | Transcripción + respuesta del agente |
+
+**Proyección 2025-2030 (red neuronal):** es **experimental**. Está validada solo a 1 mes vista, no tiene validación por horizonte ni escenario de emisiones, y tiende a la climatología. La API y el agente lo declaran siempre. Pendiente: evaluar la habilidad por horizonte (1–12 meses) en `model/train_nn.py` antes de presentarla como pronóstico.
+
+**Agente:** usa la ciencia del backend como herramientas (no inventa cifras de lugares). Necesita `ANTHROPIC_API_KEY` (u otro proveedor) en `.env`, que **no** se sube a git.
 
 Documentación interactiva en `http://localhost:8000/docs`. CORS abierto (datos públicos, sin credenciales).
 
