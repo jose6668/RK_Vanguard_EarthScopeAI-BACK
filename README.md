@@ -35,6 +35,7 @@ git clone https://github.com/jose6668/RK_Vanguard_EarthScopeAI-BACK.git   # trae
 cd RK_Vanguard_EarthScopeAI-BACK
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-backend.txt          # liviano: API, ciencia y pruebas
+pip install -r requirements-agent.txt            # opcional: agente y voz (Python ≥ 3.10)
 uvicorn api.main:app --reload --port 8000        # http://localhost:8000/docs
 ```
 
@@ -51,11 +52,13 @@ O con compose, que guarda la cache decodificada en un volumen:
 docker compose up --build
 ```
 - La imagen trae `data/dataset/` y `data/sample/`; no hay que montar nada.
-- Con internet lento hacia PyPI: `pip download -r requirements-backend.txt -d wheels` (usa la caché de pip) y el build instala desde `wheels/` sin red.
+- Con internet lento hacia PyPI: `pip download -r requirements-agent.txt -d wheels` (usa la caché de pip) y el build instala desde `wheels/` sin red.
 - `EARTHSCOPE_DATA` funciona igual: `docker run -e EARTHSCOPE_DATA=sample -p 8000:8000 earthscope-backend`.
 - El primer arranque tarda unos segundos mientras decodifica el dataset.
 
-### Agente (LangChain)
+### Agente (LangChain) — opcional
+Necesita `pip install -r requirements-agent.txt` (Python ≥ 3.10) y una API key. Sin eso, el resto de la API funciona igual.
+
 `POST /api/v1/agent/chat` con `{"message", "session", "context"}` responde preguntas usando la ciencia del backend como herramientas: variables, tendencia en un punto o polígono y la predicción de la red neuronal.
 ```bash
 echo 'ANTHROPIC_API_KEY=sk-ant-api03-...' > .env      # no se sube a git

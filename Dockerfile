@@ -10,10 +10,10 @@ WORKDIR /app
 
 # dependencias primero para aprovechar la cache de capas
 # wheels/ (opcional): paquetes ya bajados con pip download, para no depender de la red
-COPY requirements-backend.txt .
+COPY requirements-backend.txt requirements-agent.txt ./
 COPY wheels/ /tmp/wheels/
-RUN (pip install --no-index --find-links /tmp/wheels -r requirements-backend.txt \
-     || pip install --find-links /tmp/wheels -r requirements-backend.txt) \
+RUN (pip install --no-index --find-links /tmp/wheels -r requirements-agent.txt \
+     || pip install --find-links /tmp/wheels -r requirements-agent.txt) \
     && rm -rf /tmp/wheels
 
 # código

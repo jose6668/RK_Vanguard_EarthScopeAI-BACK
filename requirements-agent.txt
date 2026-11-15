@@ -1,0 +1,7 @@
+# Agente conversacional y voz (api/agent.py). OPCIONAL y requiere Python ≥ 3.10.
+# Sin estas librerías (o sin API key) la API sigue funcionando y /api/v1/agent/* responde 503.
+-r requirements-backend.txt
+langchain>=1.0
+langchain-anthropic>=1.0
+langchain-google-genai>=2.0
+python-dotenv>=1.0
