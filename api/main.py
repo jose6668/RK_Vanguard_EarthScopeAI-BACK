@@ -143,7 +143,16 @@ def area_analyze(req: AreaRequest):
 
 
 # satélites: TLE de CelesTrak con caché de 6 horas
-SATS = [25544, 25994, 27424, 39574, 37849, 43013, 49260, 40376, 43613]
+# Earth-observation satellites shown on the globe (NORAD ids). Grouped by their role for THIS site's data
+# (see web/lib/satellites.ts): direct source, calibration, contributors to IMERG / MERRA-2, and others.
+SATS = [
+    25994,                                                        # Terra (MODIS: EVI, LST)
+    39574,                                                        # GPM Core (calibrates IMERG)
+    27424, 37849, 43013, 33591, 38771, 43689, 38337, 29522, 35951,  # Aqua, Suomi NPP, NOAA-20, NOAA-19,
+                                                                  # MetOp-B/C, GCOM-W1, DMSP F17/F18
+    41866, 51850, 38552, 41836,                                   # GOES-16/18, Meteosat-10, Himawari-9 (GEO)
+    25544, 49260, 40376, 43613,                                   # ISS, Landsat 9, SMAP, ICESat-2 (not used)
+]
 _TLE_CACHE = ROOT / "data" / ".cache" / "tle.json"
 _tle: dict = {}
 
