@@ -69,7 +69,8 @@ Reglas de datos:
 - No confundas datos observados (satélite), reanálisis (MERRA-2) y la proyección de la red.
 - Cuando des datos, termina con la fuente NASA en pocas palabras ("Fuente: MODIS").
 
-Formato: texto plano. No uses asteriscos, almohadillas, comillas invertidas ni tablas."""
+Formato: texto plano. No uses asteriscos, almohadillas, comillas invertidas ni tablas.
+Huevo de pascua: si alguien pregunta por Grecox, Korhan o Araña, son el equipo RoboKids que construyó EarthScope (Neiva, Colombia). Responde con una línea breve y cálida y vuelve a la ciencia."""
 
 
 def _short(r: dict) -> dict:
@@ -345,11 +346,34 @@ def available() -> bool:
     return need is None or any(os.environ.get(k) for k in need)
 
 
+# --- idioma: el modelo a veces contesta en el idioma del prompt (español) aunque le pregunten en inglés.
+# Se detecta el idioma del mensaje y se le ordena explícitamente responder en ese idioma.
+_ES = {"que", "qué", "el", "la", "los", "las", "de", "del", "en", "y", "es", "por", "para", "como", "cómo",
+       "cuánto", "cuanto", "dónde", "donde", "muéstrame", "muestrame", "hola", "aquí", "aqui", "está", "esta",
+       "lluvia", "vegetación", "temperatura", "hace", "más", "mas", "qué", "pasa", "gracias", "un", "una"}
+_EN = {"what", "the", "is", "are", "of", "in", "and", "how", "where", "show", "me", "here", "this", "does",
+       "rain", "vegetation", "temperature", "warmer", "hello", "hi", "thanks", "much", "a", "an", "to", "it"}
+
+
+def detect_lang(message: str, fallback: str | None = None) -> str:
+    """'es' o 'en' según las palabras del mensaje; si empata, el idioma de la interfaz (o inglés)."""
+    words = re.findall(r"[a-záéíóúñü]+", message.lower())
+    es = sum(w in _ES for w in words) + 2 * bool(re.search(r"[¿¡ñáéíóú]", message.lower()))
+    en = sum(w in _EN for w in words)
+    if es > en:
+        return "es"
+    if en > es:
+        return "en"
+    return fallback if fallback in ("es", "en") else "en"
+
+
 def ask(message: str, session: str, context: dict | None = None) -> dict:
-    text = message
+    lang = detect_lang(message, (context or {}).get("lang"))
+    rule = ("[Responde SOLO en español.]" if lang == "es" else "[Reply ONLY in English, even though your instructions are in Spanish.]")
+    text = f"{rule}\n{message}"
     if context:
         # lo que el usuario ve en el globo
-        text = f"[contexto de la vista: {context}]\n{message}"
+        text = f"[contexto de la vista: {context}]\n{text}"
     actions: list = []
     token = ACTIONS.set(actions)
     try:

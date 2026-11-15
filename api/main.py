@@ -125,6 +125,32 @@ def forecast_point(var: str, lat: float, lng: float):
         raise HTTPException(404, "no forecast for that variable")
 
 
+class SimulationRequest(BaseModel):
+    model: str
+    inputs: dict = Field(default_factory=dict)
+
+
+@app.get("/api/v1/simulate/models")
+def simulation_models():
+    """Modelos de escenario ("¿y si…?") con su validación. Base para las simulaciones experimentales."""
+    from science import simulation
+    return {"models": simulation.list_models()}
+
+
+@app.post("/api/v1/simulate")
+def simulate(req: SimulationRequest):
+    """Corre un escenario de un modelo VALIDADO. Respuesta etiquetada como data_kind 'scenario'."""
+    from science import simulation
+    try:
+        return clean(simulation.simulate(req.model, req.inputs))
+    except KeyError:
+        raise HTTPException(404, f"unknown model '{req.model}'")
+    except PermissionError as exc:
+        raise HTTPException(409, str(exc))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+
 @app.post("/api/v1/area/analyze")
 def area_analyze(req: AreaRequest):
     if req.variable not in GLOBAL_VARIABLES:

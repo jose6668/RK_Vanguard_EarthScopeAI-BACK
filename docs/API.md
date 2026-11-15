@@ -17,6 +17,8 @@ uvicorn api.main:app --reload --port 8000      # documentación interactiva: htt
 | GET | `/api/v1/events` | — | Eventos naturales activos (NASA EONET: incendios, tormentas, volcanes…), caché de 30 min |
 | GET | `/api/v1/satellites` | — | TLE de satélites (ISS, Terra, Aqua…) desde CelesTrak, caché de 6 h |
 | POST | `/api/v1/agent/chat` | `{message, session, context?}` | Respuesta del agente y `actions` que la web ejecuta en el globo. 503 sin `requirements-agent.txt` o sin API key |
+| GET | `/api/v1/simulate/models` | — | Modelos de escenario ("¿y si…?") con su validación fuera de muestra y `status` (`validated` / `no_skill`) |
+| POST | `/api/v1/simulate` | `{model, inputs}` | Escenario `data_kind: "scenario"` con estimación, intervalo 95 %, alerta de extrapolación y supuestos. 404 modelo desconocido, 409 sin habilidad, 422 entrada fuera de rango. Ver `SIMULACIONES.md` |
 | POST | `/api/v1/agent/voice` | audio WAV en el cuerpo, `session`, `context` | Transcripción + respuesta del agente |
 
 **Proyección 2025-2030 (red neuronal):** es **experimental**. Está validada solo a 1 mes vista, no tiene validación por horizonte ni escenario de emisiones, y tiende a la climatología. La API y el agente lo declaran siempre. Pendiente: evaluar la habilidad por horizonte (1–12 meses) en `model/train_nn.py` antes de presentarla como pronóstico.

@@ -7,6 +7,12 @@ import numpy as np
 
 os.environ.setdefault("EARTHSCOPE_DATA", "sample")
 os.environ.pop("ANTHROPIC_API_KEY", None)
+# hermético: que un .env local con claves reales no cambie el resultado (load_dotenv no pisa variables ya definidas)
+for k in ("GOOGLE_API_KEY", "GEMINI_API_KEY", "ELEVENLABS_API_KEY"):
+    os.environ[k] = ""
+# el modelo por defecto (anthropic) sin su clave: el endpoint debe responder 503
+os.environ.setdefault("EARTHSCOPE_AGENT_MODEL", "anthropic:claude-sonnet-5-5")
+os.environ["EARTHSCOPE_AGENT_FALLBACK"] = os.environ.get("EARTHSCOPE_AGENT_FALLBACK_TEST", "")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi.testclient import TestClient  # noqa: E402
 from langchain_core.language_models.chat_models import BaseChatModel  # noqa: E402
@@ -182,3 +188,11 @@ assert real_transcribe(b"RIFF") == "hola mundo" and calls == ["no-existe", "mode
 del os.environ["ELEVENLABS_API_KEY"]
 
 print("test_agent: OK")
+
+# idioma: responde en el de la pregunta (no en el del prompt)
+assert agent.detect_lang("What is happening on the planet right now?") == "en"
+assert agent.detect_lang("¿Qué está pasando en el planeta?") == "es"
+assert agent.detect_lang("Muéstrame la lluvia en la Amazonía") == "es"
+assert agent.detect_lang("Show me the rain here") == "en"
+assert agent.detect_lang("ok", "es") == "es" and agent.detect_lang("ok") == "en"
+print("test_agent (idioma): OK")
