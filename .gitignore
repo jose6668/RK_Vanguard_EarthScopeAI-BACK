@@ -10,3 +10,8 @@ data/.cache/
 build/
 logs/
 .claude/
+# predicción de la red neuronal (se genera con train_nn.py)
+data/forecast.npz
+# paquetes locales para docker build sin red
+wheels/*
+!wheels/.gitkeep

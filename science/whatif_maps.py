@@ -1,12 +1,4 @@
-"""
-Pixel-level What-If model (map version of science/whatif.py).
-
-For every 0.1 deg pixel: dry-season (Jul-Oct) LST = a + b * r, r = relative precipitation
-anomaly of that pixel. Validation per pixel by leave-one-year-out (closed form via
-leverage: e_loo = e / (1 - h)). Output: data/processed/whatif_pixel_model.npz
-
-Run once:  python science/whatif_maps.py      (numpy only)
-"""
+"""Per-pixel version of the What-If model."""
 from pathlib import Path
 import glob
 import os

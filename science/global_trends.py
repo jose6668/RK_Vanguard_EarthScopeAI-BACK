@@ -1,13 +1,4 @@
-"""Per-pixel trend maps for global grids (vectorised).
-
-For each grid cell, a Mann-Kendall test and a Sen slope on its ANNUAL means (one value per
-year, so the seasonal cycle is already removed). Used to build global "where is it changing"
-maps. Regional analyses keep using the stronger seasonal test in science/trends.py.
-
-Caveats (shown in the UI):
-- Annual series of ~24 values: low power; p-values ignore residual autocorrelation.
-- Each pixel is tested independently: at α = 0.05, ~5 % of pixels look significant by chance.
-"""
+"""Per-pixel trend maps for global grids."""
 from __future__ import annotations
 
 import warnings
@@ -17,10 +8,7 @@ from scipy.stats import norm
 
 
 def annual_trend(cube: np.ndarray, years: np.ndarray, min_years: int = 15) -> dict[str, np.ndarray]:
-    """cube: (n_years, lat, lon) of annual means (NaN = missing).
-
-    Returns maps: sen_slope (units/yr), p_value, n (valid years), mean.
-    """
+    """cube: (n_years, lat, lon) of annual means (NaN = missing)."""
     n_t = cube.shape[0]
     x = cube.reshape(n_t, -1).astype("float64")
     valid = ~np.isnan(x)

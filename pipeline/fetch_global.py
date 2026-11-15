@@ -1,25 +1,4 @@
-"""
-EarthScope AI - GLOBAL NASA data pipeline.
-
-Downloads monthly NASA products for the whole planet, one file at a time, regrids each
-month to a common 0.5° global grid (360 x 720, north->south, west->east), saves it as a
-compressed .npz and deletes the raw file. Re-running resumes where it left off.
-
-Products (monthly, 2001-01 → 2024-12):
-  precipitation  GPM_3IMERGM v07   GPM IMERG Final precipitation, 0.1°        → precip_mm_day
-  vegetation     MOD13C2 v6.1      MODIS/Terra vegetation indices, 0.05° CMG → ndvi, evi
-  lst            MOD11C3 v6.1      MODIS/Terra land surface temp, 0.05° CMG  → lst_day_c, lst_night_c
-  atmosphere     M2TMNXSLV 5.12.4  MERRA-2 single-level diagnostics (reanalysis), 0.5° x 0.625°
-                                   → t2m_c (air temp 2 m), qv2m_gkg (specific humidity 2 m),
-                                     rh2m_pct (relative humidity 2 m, derived)
-
-Output: data/global/<product>/<YYYY-MM>.npz   (float32 arrays + lat/lon)
-
-Requirements: Earthdata Login (~/.netrc) with "NASA GESDISC DATA ARCHIVE" and "LP DAAC" approved.
-Usage:
-  python pipeline/fetch_global.py --product precipitation
-  python pipeline/fetch_global.py --product all --start 2001-01 --end 2024-12
-"""
+"""Download NASA monthly products and regrid them to a global 0.5° grid."""
 from __future__ import annotations
 
 import argparse
@@ -48,7 +27,7 @@ PRODUCTS = {
 }
 
 
-# ------------------------------------------------------------------- helpers
+# helpers
 def block_mean(a: np.ndarray, f: int) -> np.ndarray:
     """Average non-overlapping f x f blocks, ignoring NaN (all-NaN block -> NaN)."""
     r, c = a.shape
@@ -78,7 +57,7 @@ def out_path(product: str, month: str) -> Path:
     return OUT / product / f"{month}.npz"
 
 
-# ----------------------------------------------------------------- readers
+# readers
 def read_cmg(path: str, sds_name: str):
     from pyhdf.SD import SD, SDC
     f = SD(path, SDC.READ)
@@ -128,14 +107,14 @@ def extract_precip(path: str) -> dict:
 
 def _regrid_merra(a: np.ndarray, lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
     """MERRA-2 0.5° x 0.625° grid points -> 0.5° cell centres (bilinear, lon wraps)."""
-    # longitude: periodic linear interpolation at the target centres
+    # longitude: periodic interpolation
     lon_ext = np.concatenate([lon, [lon[0] + 360]])
     a_ext = np.concatenate([a, a[:, :1]], axis=1)
     tgt_lon = np.where(LON < lon[0], LON + 360, LON)
     idx = np.clip(np.searchsorted(lon_ext, tgt_lon) - 1, 0, len(lon_ext) - 2)
     w = (tgt_lon - lon_ext[idx]) / (lon_ext[idx + 1] - lon_ext[idx])
     b = a_ext[:, idx] * (1 - w) + a_ext[:, idx + 1] * w                # (361, 720)
-    # latitude: points at -90, -89.5 … 90 -> centres = mean of neighbours, then N->S
+    # latitude: points to cell centres, then N->S
     c = 0.5 * (b[:-1] + b[1:])                                         # (360, 720) S->N
     if lat[0] < lat[-1]:
         c = c[::-1]
@@ -184,7 +163,7 @@ def download(url: str, folder: str, retries: int = 4) -> str:
     raise RuntimeError(f"download failed after {retries} attempts")
 
 
-# -------------------------------------------------------------------- main
+# main
 def run(product: str, start: str, end: str) -> None:
     import earthaccess
     cfg = PRODUCTS[product]
@@ -204,7 +183,7 @@ def run(product: str, start: str, end: str) -> None:
                 np.savez_compressed(out_path(product, month), lat=LAT, lon=LON,
                                     source_file=os.path.basename(url), **grids)
                 print(f"  ok {month} ({k}/{len(todo)}, {time.time() - t0:.0f}s)", flush=True)
-            except Exception as exc:                                   # keep going, log failure
+            except Exception as exc:  # log and continue
                 print(f"  ! {month}: {exc}", file=sys.stderr, flush=True)
             finally:
                 for p in Path(tmp).glob("*"):

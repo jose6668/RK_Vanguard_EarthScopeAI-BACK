@@ -1,4 +1,4 @@
-"""Validate per-pixel trend maps on synthetic grids with KNOWN trends (python tests/test_global_trends.py)."""
+"""Per-pixel trend tests."""
 import sys
 from pathlib import Path
 

@@ -1,16 +1,4 @@
-"""Export GLOBAL NASA layers and science results for the web (frontend repo: web/public/data/global/).
-
-Reads the packed dataset in git (data/dataset/, science/dataset.py) and writes:
-  manifest.json                         variables, years, colour scales, caveats
-  series/<var>.json                     global area-weighted monthly series + trend (science/trends.py)
-  maps/<var>/value/<year>.png           annual mean (720 x 360, NaN = transparent)
-  maps/<var>/anomaly/<year>.png         annual mean minus the period mean
-  maps/<var>/trend.png                  per-pixel Sen slope (science/global_trends.py);
-                                        non-significant pixels (p >= 0.05) are faded
-
-    python export/build_global_data.py            # all variables
-    python export/build_global_data.py --var evi  # one variable
-"""
+"""Export the global NASA layers for the web."""
 from __future__ import annotations
 
 import argparse
@@ -52,7 +40,6 @@ COLORS = {
                  "anomaly": ["#9a3412", "#fdba74", "#f8fafc", "#5eead4", "#0f766e"],
                  "trend": ["#9a3412", "#fdba74", "#f8fafc", "#5eead4", "#0f766e"]},
 }
-# metadata lives in science/variables.py (single source of truth)
 VARS = {k: {**GLOBAL_VARIABLES[k], **COLORS[k]} for k in COLORS}
 
 
@@ -69,7 +56,7 @@ def annual(months: list[str], cube: np.ndarray, min_months: int = 10):
     for y in sorted(set(yrs)):
         sel = yrs == y
         if sel.sum() < 12:
-            continue                                            # incomplete year in the archive
+            continue  # incomplete year
         block = cube[sel]
         n = np.sum(~np.isnan(block), axis=0)
         with warnings.catch_warnings():
@@ -102,7 +89,7 @@ def export_var(key: str, cfg: dict) -> dict:
                  base / "value" / f"{y}.png")
         save_png(colorize(g - clim, -amax, amax, cfg["anomaly"]), base / "anomaly" / f"{y}.png")
 
-    # per-pixel trend (Sen slope per decade), faded where not significant
+    # per-pixel trend, faded where not significant
     tr = annual_trend(ann, years.astype(float))
     per_dec = tr["sen_slope"] * 10
     tmax = float(np.nanpercentile(np.abs(per_dec), 98)) or 1.0
@@ -116,7 +103,7 @@ def export_var(key: str, cfg: dict) -> dict:
     share_sig = float(np.sum(w[sig & valid]) / np.sum(w[valid]))
     share_up = float(np.sum(w[sig & valid & (per_dec > 0)]) / np.sum(w[valid]))
 
-    # global series: fixed mask of cells valid in ≥ 90 % of months (avoids coverage artefacts)
+    # cells valid in at least 90 % of months
     mask = np.mean(~np.isnan(cube), axis=0) >= 0.9
     s = pd.Series([area_weighted_mean(c, lat, mask) for c in cube],
                   index=pd.to_datetime([m + "-01" for m in months]), name=key).asfreq("MS")
