@@ -1,4 +1,18 @@
-"""Read and write the compressed global dataset in data/dataset/."""
+"""The EarthScope global dataset as it lives IN GIT (data/dataset/).
+
+Monthly global grids 2001–2024 at 0.5° (360 x 720, north→south, west→east) for every variable
+downloaded by pipeline/fetch_global.py, packed so that cloning the repo is enough:
+
+  data/dataset/manifest.json            variables, scale factors, years, grid, provenance
+  data/dataset/<var>/<YYYY>.i16.xz      12 months of one variable
+
+Encoding (lossless at the stated precision, like NASA's own scale_factor packing):
+  value ≈ int16 × scale        (NaN → −32768)
+  delta along longitude → byte-shuffle (high/low bytes) → LZMA (xz)
+Precision: 0.01 mm/day, 0.0001 index, 0.01 °C, 0.001 g/kg, 0.01 %.
+
+Build:  python pipeline/pack_dataset.py      Read:  load_cube("t2m_c")
+"""
 from __future__ import annotations
 
 import json
@@ -14,7 +28,7 @@ CACHE = ROOT / "data" / ".cache"
 NLAT, NLON = 360, 720
 NODATA = -32768
 
-# variable -> (product folder, scale factor)
+# variable -> (product folder in data/global, scale factor)
 PACKING = {
     "precip_mm_day": ("precipitation", 0.01),
     "ndvi": ("vegetation", 0.0001),
@@ -27,7 +41,7 @@ PACKING = {
 }
 
 
-# codec
+# ------------------------------------------------------------------ codec
 def encode(values: np.ndarray, scale: float) -> bytes:
     """(months, 360, 720) float → compressed bytes."""
     q = np.where(np.isnan(values), NODATA, np.round(values / scale))
@@ -48,7 +62,7 @@ def decode(blob: bytes, months: int, scale: float) -> np.ndarray:
     return out
 
 
-# reading
+# ------------------------------------------------------------------ reading
 @lru_cache(maxsize=1)
 def manifest() -> dict:
     p = DATASET / "manifest.json"
@@ -72,7 +86,11 @@ def load_year(var: str, year: int) -> np.ndarray:
 
 
 def load_cube(var: str, use_cache: bool = True) -> tuple[np.ndarray, list[str]]:
-    """All months of one variable as float32 (months, 360, 720)."""
+    """All months of one variable as float32 (months, 360, 720).
+
+    With use_cache, the decoded cube is kept as a memory-mapped file in data/.cache/ (out of git)
+    so the API starts fast after the first run.
+    """
     ms = months(var)
     if not use_cache:
         return np.concatenate([load_year(var, y) for y in manifest()["variables"][var]["years"]]), ms

@@ -1,4 +1,29 @@
-"""What-If model: dry-season surface temperature as a function of precipitation."""
+"""
+EarthScope AI - What-If Earth Lab model (Module B).
+
+Question it answers
+    "If dry-season precipitation changed by X %, what land-surface temperature (LST)
+     would the statistical model estimate, and how uncertain is that estimate?"
+
+Why this relationship (and not vegetation)
+    Tested on the 2001-2024 NASA data for the central Amazon box:
+      - dry-season LST ~ precipitation : leave-one-year-out R^2 = 0.49  -> usable
+      - EVI ~ precipitation (+LST)     : leave-one-year-out R^2 <= 0.1  -> no skill
+    Only relationships that pass out-of-sample validation are offered as scenarios.
+
+Model
+    Unit = one year. For each year, average the selected months (default Jul-Oct,
+    the dry season) of:  LST (deg C)  and  precipitation relative anomaly
+    r = P_year / P_mean - 1.
+    Fit  LST = a + b * r  by ordinary least squares.
+    Scenario: r = pct/100  ->  LST estimate with 95 % prediction interval.
+
+What it is NOT
+    - Not a climate forecast: no greenhouse forcing, no land-use change, no feedbacks.
+    - Not causal proof: it is an observed statistical association (the physical
+      mechanism, less cloud and less evaporative cooling, is a hypothesis).
+    - Outside the observed range of r the estimate is an extrapolation and flagged.
+"""
 from __future__ import annotations
 
 import numpy as np

@@ -1,4 +1,6 @@
-"""API contract tests."""
+"""Contract tests for the analysis API (python tests/test_api.py). Runs on the 2° sample in git.
+
+If these pass, the web's InsightPanel will still understand the API responses."""
 import os
 import sys
 from pathlib import Path
@@ -20,7 +22,7 @@ poly = {"type": "Polygon", "coordinates": [[[-10, 36], [3, 36], [3, 44], [-10, 4
 r = c.post("/api/v1/area/analyze", json={"variable": "t2m_c", "geometry": poly})
 assert r.status_code == 200, r.text
 d = r.json()
-# fields the web reads
+# fields read by web/components/data/InsightPanel.tsx and web/lib/api.ts
 for key in ("ok", "label", "units", "dataset", "doi", "caveats", "annual", "trend_line", "robust", "area"):
     assert key in d, key
 for key in ("verdict", "period", "mean", "sen_slope_per_year", "sen_change_pct_of_mean", "seasonal_mann_kendall"):

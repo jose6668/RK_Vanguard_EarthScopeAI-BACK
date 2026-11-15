@@ -1,4 +1,17 @@
-"""EarthScope AI analysis API (FastAPI)."""
+"""EarthScope AI analysis API (FastAPI).
+
+Data: full global grids when present, otherwise the 2° sample in git (EARTHSCOPE_DATA=auto|full|sample).
+
+Thin layer over science/: the web sends an area (GeoJSON polygon or point) and a variable,
+and gets back the area's monthly series, trend, robustness and caveats computed by the
+same engine as the case study. No science lives here.
+
+Optional services (korhan6): conversational agent and voice (api/agent.py), neural-network
+forecast maps (api/forecast.py), NASA EONET natural events (api/events.py) and live satellite
+positions (CelesTrak TLE).
+
+    uvicorn api.main:app --port 8000        # docs at http://localhost:8000/docs
+"""
 from __future__ import annotations
 
 import json

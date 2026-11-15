@@ -1,4 +1,19 @@
-"""Download NASA monthly products for the Amazon case study."""
+"""
+EarthScope AI - NASA data ingestion pipeline.
+
+Downloads monthly NASA products one file at a time, extracts the area-weighted
+mean over the study region, writes one row per month to CSV, and deletes the raw
+file to save disk space. Re-running resumes where it left off.
+
+Products (all monthly, global grids):
+  - MOD13C2 v6.1  : MODIS/Terra Vegetation Indices, 0.05 deg CMG (NDVI, EVI)
+  - MOD11C3 v6.1  : MODIS/Terra Land Surface Temperature, 0.05 deg CMG (day LST)
+  - GPM_3IMERGM 07: GPM IMERG Final Run precipitation, 0.1 deg
+
+Requirements: an Earthdata Login account (https://urs.earthdata.nasa.gov).
+Usage:
+  python pipeline/fetch_nasa.py --product all --start 2001-01 --end 2024-12
+"""
 from __future__ import annotations
 
 import argparse
@@ -11,8 +26,8 @@ from pathlib import Path
 
 import numpy as np
 
-# configuration
-# study region: central Amazon
+# ---------------------------------------------------------------- configuration
+# Study region: central Amazon box (edit to change the region).
 REGION = {"name": "amazon_core", "lat_min": -10.0, "lat_max": 2.0,
           "lon_min": -70.0, "lon_max": -50.0}
 
@@ -26,7 +41,7 @@ PRODUCTS = {
 }
 
 
-# helpers
+# ------------------------------------------------------------------- helpers
 def cmg_slices(region: dict, res: float = 0.05):
     """Row/col slices for a MODIS CMG grid (lat 90 -> -90, lon -180 -> 180)."""
     r0 = int(round((90 - region["lat_max"]) / res))
@@ -46,7 +61,7 @@ def weighted_mean(arr: np.ndarray, lats: np.ndarray):
     return float(np.nansum(arr * w) / np.sum(w[valid])), float(valid.mean())
 
 
-GRID_RES = 0.1  # output grid, N->S, W->E
+GRID_RES = 0.1   # common output grid for all products (deg), north->south, west->east
 GRID_DIR = ROOT / "data" / "grids"
 
 
@@ -90,7 +105,7 @@ def month_from_name(path: str) -> str:
     raise ValueError(f"Cannot parse date from {name}")
 
 
-# readers
+# ----------------------------------------------------------------- readers
 def read_hdf4_sds(path: str, sds_name: str):
     from pyhdf.SD import SD, SDC
     f = SD(path, SDC.READ)
@@ -172,7 +187,7 @@ def download_with_timeout(url: str, folder: str, retries: int = 3) -> str:
     raise RuntimeError(f"download failed after {retries} attempts")
 
 
-# main
+# -------------------------------------------------------------------- main
 def run(product: str, start: str, end: str) -> None:
     import earthaccess
 
@@ -208,7 +223,7 @@ def run(product: str, start: str, end: str) -> None:
                 values, grids = EXTRACTORS[product](files[0])
                 row.update(values)
                 save_grid(product, month, grids)
-            except Exception as exc:  # log and continue
+            except Exception as exc:                       # keep going, log failure
                 print(f"  ! {month}: {exc}", file=sys.stderr)
                 continue
             finally:

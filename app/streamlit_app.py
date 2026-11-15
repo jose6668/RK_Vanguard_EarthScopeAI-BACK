@@ -1,4 +1,9 @@
-"""EarthScope AI Earth Trend Detector (Streamlit)."""
+"""
+EarthScope AI — Planetary Investigation Lab
+Module A: Earth Trend Detector (NASA Space Apps 2026 · Earth System Trend Detective)
+
+Run:  streamlit run app/streamlit_app.py
+"""
 import json
 import sys
 from pathlib import Path
@@ -31,7 +36,7 @@ st.markdown('<div class="hero"><h1>EarthScope AI</h1>'
             'NASA Space Apps 2026 — Earth System Trend Detective</p></div>', unsafe_allow_html=True)
 
 
-# data access
+# ------------------------------------------------------------- data access
 def available_variables(region: str) -> dict:
     out = {}
     for key, meta in VARIABLES.items():
@@ -46,7 +51,7 @@ def get_series(path: str, column: str) -> pd.Series:
     return load_series(path, column)
 
 
-# sidebar
+# ---------------------------------------------------------- sidebar: steps
 with st.sidebar:
     st.markdown('<div class="step">Step 1 · Variable</div>', unsafe_allow_html=True)
     region = "amazon_core"
@@ -78,7 +83,7 @@ if s.dropna().size < 36:
 r = analyze(s, alpha)
 mk, ols = r["seasonal_mann_kendall"], r["ols_anomaly"]
 
-# region map
+# ------------------------------------------------------------ region map
 c_map, c_info = st.columns([1, 2])
 with c_map:
     reg = REGIONS[region]
@@ -104,7 +109,7 @@ with c_info:
     m3.metric("Mann-Kendall p", f"{mk['p_value']:.3f}")
     m4.metric("95% CI (OLS)", f"[{ols['ci_low']:+.3f}, {ols['ci_high']:+.3f}]")
 
-# series
+# ------------------------------------------------------- step 4: series
 st.markdown('<div class="step">Step 4 · Time series — does it appear to have a trend?</div>',
             unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["Monthly series", "Anomalies & trend", "Annual means"])
@@ -136,7 +141,7 @@ with tab3:
     f3.update_layout(template="plotly_dark", height=380, yaxis_title=units, margin=dict(t=30))
     st.plotly_chart(f3, use_container_width=True)
 
-# robustness
+# --------------------------------------------------- robustness / evidence
 st.markdown('<div class="step">Robustness check</div>', unsafe_allow_html=True)
 rows = []
 for label, sub in [("Full selected period", s),
@@ -156,7 +161,7 @@ if rob["Verdict"].nunique() > 1:
 else:
     st.success("The conclusion is stable when the edges of the period are removed.")
 
-# method and limits
+# ------------------------------------------------------- method & limits
 c1, c2 = st.columns(2)
 with c1:
     with st.expander("Method", expanded=False):

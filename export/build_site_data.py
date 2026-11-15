@@ -1,4 +1,16 @@
-"""Export the Amazon case-study layers for the web."""
+"""Export processed NASA data and science results for the web frontend.
+
+The web never computes science: this script runs science/ and writes static files that
+the Next.js app reads from web/public/data/.
+
+    python export/build_site_data.py
+
+Outputs
+  manifest.json                     region, variables, years, color scales
+  series/<var>.json                 monthly + annual series, trend result, robustness
+  maps/<var>/value/<year>.png       annual-mean map (colored, NaN = transparent)
+  maps/<var>/anomaly/<year>.png     annual mean minus the 2001–2024 mean
+"""
 from __future__ import annotations
 
 import json
@@ -18,7 +30,11 @@ from science.variables import REGIONS, VARIABLES  # noqa: E402
 
 REGION = "amazon_core"
 def web_data_dir() -> Path:
-    """Where the web's static data goes (the FRONTEND repo's web/public/data)."""
+    """Where the web's static data goes (the FRONTEND repo's web/public/data).
+
+    EARTHSCOPE_WEB_DATA overrides it. Otherwise the frontend repo cloned next to this one is used
+    (folder RK_Vanguard_EarthScopeAI or earthscope-ai); if none is found, build/web-data/.
+    """
     env = os.environ.get("EARTHSCOPE_WEB_DATA")
     if env:
         return Path(env)
@@ -33,7 +49,7 @@ OUT = web_data_dir()
 GRIDS = ROOT / "data" / "grids" / REGION
 PROCESSED = ROOT / "data" / "processed"
 
-# variables shown on the web
+# Variables shown on the web (EVI preferred over NDVI, decision D4).
 WEB_VARS = {
     "precip_mm_day": {"short": "Precipitation", "grid": "precipitation", "decimals": 2,
                       "value": ["#f1f5f9", "#93c5fd", "#3b82f6", "#1d4ed8", "#1e1b4b"],
@@ -53,7 +69,8 @@ def hex_rgb(h: str) -> np.ndarray:
 
 def colorize(grid: np.ndarray, vmin: float, vmax: float, stops: list[str],
              alpha_ramp: bool = False) -> Image.Image:
-    """Map values to an RGBA image with linear interpolation between color stops."""
+    """Map values to an RGBA image with linear interpolation between color stops.
+    alpha_ramp: low values become more transparent (lets the Earth show through)."""
     cols = np.stack([hex_rgb(c) for c in stops])
     t = np.clip((grid - vmin) / (vmax - vmin), 0, 1)
     pos = np.nan_to_num(t, nan=0) * (len(stops) - 1)
@@ -107,7 +124,7 @@ def export_series(var: str, meta: dict, alpha: float = 0.05) -> dict:
     annual = s.groupby(s.index.year).agg(["mean", "count"])
     annual = annual[annual["count"] == 12]["mean"]
     anom = r.pop("anomalies")
-    # Sen slope line, display only
+    # Sen-slope line through the period mean, for display only
     yrs = np.array(annual.index, dtype=float)
     centre = yrs.mean()
     trend_line = [[int(y), float(annual.mean() + r["sen_slope_per_year"] * (y - centre))] for y in yrs]

@@ -1,4 +1,5 @@
-"""Variable catalog: sources, units and caveats."""
+"""Catalog of variables: where each lives, units, NASA source and scientific caveats.
+The app, the Evidence Graph and the assistant all read from here."""
 
 VARIABLES = {
     "precip_mm_day": {
@@ -44,7 +45,8 @@ REGIONS = {
                     "lat_min": -10.0, "lat_max": 2.0, "lon_min": -70.0, "lon_max": -50.0},
 }
 
-# global 0.5° grids
+# Global 0.5° grids (pipeline/fetch_global.py → data/global/<product>/<YYYY-MM>.npz).
+# Used by the area analysis (science/area.py), the API and the global web export.
 GLOBAL_VARIABLES = {
     "precip_mm_day": {
         "product": "precipitation", "label": "Precipitation", "short": "Precipitation", "units": "mm/day",

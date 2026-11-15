@@ -1,4 +1,5 @@
-"""Dataset tests."""
+"""The compressed dataset in git (data/dataset/) is complete and decodes correctly
+(python tests/test_dataset.py)."""
 import sys
 from pathlib import Path
 

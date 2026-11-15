@@ -1,4 +1,12 @@
-"""Pack the global grids into the compressed dataset in data/dataset/."""
+"""Pack the downloaded global grids into the compressed dataset that lives in git.
+
+    python pipeline/fetch_global.py --product all     # → data/global/ (raw, out of git)
+    python pipeline/pack_dataset.py                    # → data/dataset/ (compressed, IN git)
+    python pipeline/pack_dataset.py --var t2m_c        # one variable
+
+Only complete years (12 months) are packed. Each file is checked by decoding it back.
+See science/dataset.py for the format.
+"""
 from __future__ import annotations
 
 import argparse
@@ -19,7 +27,7 @@ from science.variables import GLOBAL_VARIABLES  # noqa: E402
 
 RAW = ROOT / "data" / "global"
 
-EXTRA = {  # stored but not shown on the web yet
+EXTRA = {   # variables stored in the dataset but not (yet) shown as web layers
     "ndvi": {"label": "Vegetation (NDVI)", "units": "index", "dataset": "MODIS/Terra MOD13C2 v6.1",
              "doi": "https://doi.org/10.5067/MODIS/MOD13C2.061", "kind": "satellite"},
     "lst_night_c": {"label": "Land surface temperature (night)", "units": "°C",
