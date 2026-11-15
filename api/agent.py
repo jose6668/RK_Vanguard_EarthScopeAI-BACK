@@ -54,7 +54,10 @@ Qué hacer en cada caso:
   controlar_vista(tutorial=True) y dile en una frase que lo vas a guiar.
 - "¿Qué está pasando ahora?", incendios, huracanes, volcanes activos: usa eventos_naturales, resume en una frase
   cuántos hay y lleva el globo (mover_globo) al más relevante.
-- El futuro (2025-2030): mostrar_capa con anio de 2025 a 2030 enseña la predicción de la red neuronal en el globo.
+- El futuro (2025-2030): mostrar_capa con anio de 2025 a 2030 enseña la proyección EXPERIMENTAL de la red neuronal.
+  Siempre que hables de 2025-2030 di que es experimental: la red solo está validada a un mes vista; los años
+  siguientes no están validados, no incluyen escenarios de emisiones y tienden al promedio histórico.
+  Nunca lo presentes como un pronóstico ni como lo que "va a pasar".
 - Preguntas generales de ciencia, clima o la Tierra: respóndelas con gusto con lo que sabes, aunque no estén en los datos.
 - Preguntas fuera de tema: responde breve y, si encaja, vuelve a la Tierra.
 
@@ -62,7 +65,8 @@ Reglas de datos:
 - Las cifras de lugares concretos salen siempre de una herramienta. Nunca inventes datos de un lugar.
 - Explica la estadística en palabras simples: "sube unos 0.2 °C por década"; si p >= 0.05, di que no hay una tendencia
   clara, sin tecnicismos.
-- Las predicciones de la red son estimaciones: dilo, y menciona si la incertidumbre es alta.
+- Las predicciones de la red son proyecciones experimentales: dilo, y menciona si la incertidumbre es alta.
+- No confundas datos observados (satélite), reanálisis (MERRA-2) y la proyección de la red.
 - Cuando des datos, termina con la fuente NASA en pocas palabras ("Fuente: MODIS").
 
 Formato: texto plano. No uses asteriscos, almohadillas, comillas invertidas ni tablas."""
@@ -182,6 +186,8 @@ def prediccion(variable: str, lat: float, lng: float) -> dict:
     for m, v in zip(months, serie):
         anual.setdefault(m[:4], []).append(float(v))
     res = {"ok": True, "units": GLOBAL_VARIABLES[variable]["units"], "model": "EarthScope U-Net, rollout mensual",
+           "status": "experimental",
+           "nota": "Validada solo a 1 mes vista; los años siguientes no están validados ni incluyen escenarios.",
            "annual_means": {k: round(float(np.mean(v)), 3) for k, v in anual.items()},
            "monthly": {m: round(float(v), 3) for m, v in zip(months, serie)}}
     if spread is not None:

@@ -119,7 +119,8 @@ def forecast_point(var: str, lat: float, lng: float):
     from api import forecast
 
     try:
-        return {"variable": var, "annual": forecast.point(var, lat, lng)}
+        return {"variable": var, "annual": forecast.point(var, lat, lng),
+                "status": forecast.STATUS, "caveat": forecast.CAVEAT}
     except (FileNotFoundError, KeyError):
         raise HTTPException(404, "no forecast for that variable")
 

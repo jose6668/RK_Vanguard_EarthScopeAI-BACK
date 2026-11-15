@@ -1,4 +1,10 @@
-"""Predicción de la red neuronal (forecast.npz) como mapas anuales para el globo."""
+"""Predicción de la red neuronal (forecast.npz) como mapas anuales para el globo.
+
+IMPORTANTE (reglas del proyecto): es una proyección EXPERIMENTAL. model/train_nn.py valida la red
+solo a 1 mes vista (test 2023-2024 contra persistencia y climatología). Los meses siguientes son un
+encadenamiento autorregresivo sin validación por horizonte y sin escenario de emisiones, así que
+tienden a la climatología 2001-2020. No es una proyección climática. Toda respuesta lo declara.
+"""
 from __future__ import annotations
 
 import io
@@ -9,6 +15,11 @@ import numpy as np
 from PIL import Image
 
 from export.build_site_data import colorize
+
+STATUS = "experimental"
+CAVEAT = ("Experimental neural-network projection. Validated only one month ahead (2023-2024 test); "
+          "later months are an unvalidated autoregressive rollout with no emissions scenario that drifts "
+          "toward the 2001-2020 climatology. Not a climate projection or a forecast.")
 
 # mismas paletas que los mapas históricos (export/build_global_data.py)
 COLORS = {
@@ -35,16 +46,32 @@ def _read(path: str, _mtime: float):
     return f["data"], (f["spread"] if "spread" in f.files else None), months, [str(v) for v in f["vars"]]
 
 
+def _report() -> dict | None:
+    """Métricas de test de train_nn.py (report.json junto a forecast.npz), si se copiaron."""
+    import json
+
+    from api.agent import FORECAST
+
+    for p in (FORECAST.with_name("report.json"), FORECAST.with_name("forecast_report.json")):
+        if p.exists():
+            try:
+                return json.loads(p.read_text()).get("test")
+            except (OSError, ValueError):
+                return None
+    return None
+
+
 def info() -> dict:
     fc = _load()
     if fc is None:
-        return {"available": False, "years": [], "variables": []}
+        return {"available": False, "years": [], "variables": [], "status": STATUS, "caveat": CAVEAT}
     _, _, months, vars_ = fc
     years = sorted({int(m[:4]) for m in months})
     # solo años con al menos 10 meses predichos
     years = [y for y in years if sum(m.startswith(str(y)) for m in months) >= 10]
     return {"available": True, "years": years, "variables": [v for v in vars_ if v in COLORS],
-            "first": months[0], "last": months[-1]}
+            "first": months[0], "last": months[-1],
+            "status": STATUS, "caveat": CAVEAT, "validated_horizon_months": 1, "test_skill": _report()}
 
 
 def annual(var: str, year: int) -> tuple[np.ndarray, np.ndarray | None]:

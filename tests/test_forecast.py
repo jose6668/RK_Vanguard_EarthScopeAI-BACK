@@ -18,7 +18,8 @@ from PIL import Image  # noqa: E402
 from api.main import app  # noqa: E402
 
 c = TestClient(app)
-assert c.get("/api/v1/forecast").json()["available"] is False
+off = c.get("/api/v1/forecast").json()
+assert off["available"] is False and off["status"] == "experimental" and off["caveat"]
 assert c.get("/api/v1/forecast/map/evi/2026.png?min=0&max=1").status_code == 404
 
 months = [f"{y}-{m:02d}" for y in (2025, 2026) for m in range(1, 13)] + ["2027-01"]
@@ -29,6 +30,7 @@ spread[:, :, 20:] = 0.5  # sur muy incierto
 np.savez_compressed(tmp, data=data, spread=spread, months=np.array(months), vars=np.array(["evi", "t2m_c"]))
 
 info = c.get("/api/v1/forecast").json()
+assert info["status"] == "experimental" and "Experimental" in info["caveat"] and info["validated_horizon_months"] == 1
 assert info["available"] and info["years"] == [2025, 2026] and info["variables"] == ["evi", "t2m_c"], info
 r = c.get("/api/v1/forecast/map/evi/2026.png?min=0&max=1")
 assert r.status_code == 200 and r.headers["content-type"] == "image/png"
