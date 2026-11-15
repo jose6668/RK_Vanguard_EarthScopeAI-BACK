@@ -1,20 +1,4 @@
-"""
-EarthScope AI - Trend detection engine (Module A).
-
-Pure functions, no UI. Input: a monthly series (pandas Series with a monthly
-DatetimeIndex). Output: a dict of results that the app, the Evidence Graph and the
-AI assistant all read from (single source of truth).
-
-Methods
-- Monthly anomalies: value minus the long-term mean of the same calendar month.
-- Seasonal Mann-Kendall (Hirsch et al., 1982): non-parametric trend test computed
-  per calendar month and summed, so the seasonal cycle cannot create a false trend.
-- Seasonal Sen slope: median of within-month pairwise slopes (robust to outliers).
-- OLS on anomalies with an AR(1) effective-sample-size correction, because
-  monthly climate series are autocorrelated and plain OLS overstates significance.
-
-Only numpy / pandas / scipy are required.
-"""
+"""Trend detection: seasonal Mann-Kendall, Sen slope and OLS with AR(1) correction."""
 from __future__ import annotations
 
 import numpy as np
@@ -22,13 +6,13 @@ import pandas as pd
 from scipy import stats
 
 
-# ------------------------------------------------------------------ loading
+# loading
 def load_series(csv_path: str, column: str) -> pd.Series:
     df = pd.read_csv(csv_path)
     s = pd.Series(df[column].values, index=pd.to_datetime(df["month"]), name=column)
     s = s.sort_index()
     s = s[~s.index.duplicated()]
-    return s.asfreq("MS")                       # explicit monthly grid; gaps -> NaN
+    return s.asfreq("MS")  # monthly grid, gaps -> NaN
 
 
 def anomalies(s: pd.Series) -> tuple[pd.Series, pd.Series]:
@@ -37,7 +21,7 @@ def anomalies(s: pd.Series) -> tuple[pd.Series, pd.Series]:
     return anom.rename(f"{s.name}_anomaly"), clim
 
 
-# ------------------------------------------------------------ Mann-Kendall
+# Mann-Kendall
 def _mk_s_var(x: np.ndarray) -> tuple[float, float]:
     x = x[~np.isnan(x)]
     n = len(x)
@@ -51,8 +35,7 @@ def _mk_s_var(x: np.ndarray) -> tuple[float, float]:
 
 
 def seasonal_mann_kendall(s: pd.Series, correct_dependence: bool = True) -> dict:
-    """Seasonal MK. With correct_dependence=True, uses the Hirsch & Slack (1984)
-    covariance between months, so autocorrelated data do not inflate significance."""
+    """Seasonal MK. With correct_dependence=True, uses the Hirsch & Slack (1984)"""
     S = VAR = 0.0
     for m in range(1, 13):
         sm, vm = _mk_s_var(s[s.index.month == m].values.astype(float))
@@ -101,7 +84,7 @@ def seasonal_sen_slope(s: pd.Series) -> float:
     return float(np.median(allslopes)) if allslopes.size else float("nan")
 
 
-# ------------------------------------------------- OLS with AR(1) correction
+# OLS with AR(1) correction
 def ols_ar1(anom: pd.Series, alpha: float = 0.05) -> dict:
     a = anom.dropna()
     t = (a.index.year + (a.index.month - 0.5) / 12).values.astype(float)
@@ -123,7 +106,7 @@ def ols_ar1(anom: pd.Series, alpha: float = 0.05) -> dict:
             "intercept": float(res.intercept)}
 
 
-# ------------------------------------------------------------------ public
+# public
 def analyze(s: pd.Series, alpha: float = 0.05) -> dict:
     """Full trend analysis of one monthly series."""
     s = s.dropna()

@@ -1,0 +1,19 @@
+# solo entra lo que copia el Dockerfile
+.git
+.github
+.venv
+.claude
+**/__pycache__
+**/*.pyc
+.env
+data/raw
+data/global
+data/.cache
+data/grids
+data/processed
+build
+logs
+app
+pipeline
+tests
+docs

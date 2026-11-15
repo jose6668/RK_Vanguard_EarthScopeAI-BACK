@@ -1,19 +1,6 @@
-"""Analysis of ANY area of the planet on the global grids.
-
-Given a GeoJSON polygon (or a point) and a variable, build the area's monthly series
-(cos-latitude weighted mean over the grid cells inside it) and run the same trend engine
-as the regional case study (science/trends.py), including the robustness test.
-
-Two data sources, chosen with the EARTHSCOPE_DATA environment variable:
-  full    data/dataset/  (0.5°, compressed, ≈ 370 MB, IN git; science/dataset.py)
-          → the first call decodes it to a memory-mapped cube in data/.cache/ (out of git)
-  sample  data/sample/<var>.npz  (2°, float16, ≈ 27 MB, IN git; pipeline/make_sample.py)
-  auto    (default) full when it exists, otherwise sample
-Results from the sample are for development only; every response says which source it used.
-"""
+"""Trend analysis of any area of the planet on the global grids."""
 from __future__ import annotations
 
-import json
 import os
 import warnings
 from dataclasses import dataclass
@@ -29,7 +16,7 @@ from science.variables import GLOBAL_VARIABLES
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = ROOT / "data" / "sample"
-MIN_VALID_SHARE = 0.5      # a month counts only if ≥ 50 % of the area (by weight) has data
+MIN_VALID_SHARE = 0.5  # a month needs data over at least 50 % of the area
 MIN_MONTHS = 36
 
 
@@ -48,7 +35,7 @@ class Grid:
         return f"{self.res:g}°" + (" sample" if self.source == "sample" else "")
 
 
-# ------------------------------------------------------------------ data sources
+# data sources
 def data_mode() -> str:
     mode = os.environ.get("EARTHSCOPE_DATA", "auto").lower()
     if mode not in ("auto", "full", "sample"):
@@ -103,7 +90,7 @@ def get_cube(var: str):
     return g.cube, list(g.months)
 
 
-# ------------------------------------------------------------------ geometry
+# geometry
 def _unwrap(lons: np.ndarray) -> np.ndarray:
     out = lons.astype(float).copy()
     for i in range(1, len(out)):
@@ -157,7 +144,7 @@ def area_mask(grid: Grid, geometry: dict | None = None, point: dict | None = Non
         if geometry.get("type") != "Polygon":
             raise ValueError("geometry must be a GeoJSON Polygon")
         mask = polygon_mask(geometry["coordinates"][0], grid.lat, grid.lon)
-        if not mask.any():                                      # smaller than one cell → its centroid's cell
+        if not mask.any():  # smaller than one cell: use the centroid's cell
             ring = np.asarray(geometry["coordinates"][0], dtype=float)[:-1]
             lon = _unwrap(ring[:, 0])
             point = {"lat": float(ring[:, 1].mean()), "lng": float(((lon.mean() + 180) % 360) - 180)}
@@ -168,7 +155,7 @@ def area_mask(grid: Grid, geometry: dict | None = None, point: dict | None = Non
     return mask
 
 
-# ------------------------------------------------------------------ series + trend
+# series and trend
 def area_series(grid: Grid, var: str, mask: np.ndarray) -> tuple[pd.Series, pd.Series]:
     """Monthly area mean and the share of the area (by weight) with valid data each month."""
     rows = np.where(mask.any(axis=1))[0]

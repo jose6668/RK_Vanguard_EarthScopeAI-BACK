@@ -1,4 +1,4 @@
-"""Validate the What-If model on synthetic data with a KNOWN response (python tests/test_whatif.py)."""
+"""What-If model tests."""
 import sys
 from pathlib import Path
 

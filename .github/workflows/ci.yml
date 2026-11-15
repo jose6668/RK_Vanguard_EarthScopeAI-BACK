@@ -28,7 +28,12 @@ jobs:
       - name: API contract (sample data)
         env:
           EARTHSCOPE_DATA: sample
-        run: python tests/test_api.py
+        run: |
+          python tests/test_api.py
+          python tests/test_agent.py
+          python tests/test_satellites.py
+          python tests/test_forecast.py
+          python tests/test_events.py
       - name: Full dataset in git decodes and answers
         env:
           EARTHSCOPE_DATA: full

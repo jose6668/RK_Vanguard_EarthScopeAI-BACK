@@ -1,4 +1,4 @@
-"""Engine validation with synthetic series of KNOWN trend (run: python tests/test_trends.py)."""
+"""Trend engine tests."""
 import sys
 from pathlib import Path
 

@@ -1,13 +1,4 @@
-"""Build the lightweight SAMPLE of the global data that lives in git (data/sample/).
-
-The full dataset (data/dataset/, 0.5°, ≈ 370 MB compressed) is in git but heavy to load. This sample keeps every
-month (2001–2024) and every variable but coarsens the grid to 2° (90 x 180) and stores float16,
-so teammates can run and edit the API and science code without downloading NASA data.
-
-Results computed on the sample are for DEVELOPMENT only (the API labels them "sample").
-
-    python pipeline/make_sample.py        # from the packed dataset (data/dataset/)
-"""
+"""Build the 2° sample of the global data in data/sample/."""
 from __future__ import annotations
 
 import json
