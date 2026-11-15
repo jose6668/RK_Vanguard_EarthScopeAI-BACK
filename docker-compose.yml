@@ -1,0 +1,23 @@
+services:
+  api:
+    build: .
+    image: earthscope-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # auto, full o sample
+      EARTHSCOPE_DATA: ${EARTHSCOPE_DATA:-auto}
+      EARTHSCOPE_FORECAST: /app/models/forecast.npz
+    env_file:
+      # ANTHROPIC_API_KEY para el agente
+      - path: .env
+        required: false
+    volumes:
+      # cache decodificada, para no repetirla en cada arranque
+      - earthscope-cache:/app/data/.cache
+      # predicción de la red neuronal
+      - ./models:/app/models:ro
+    restart: unless-stopped
+
+volumes:
+  earthscope-cache:

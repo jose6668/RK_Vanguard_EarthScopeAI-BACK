@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT))
 from export.build_site_data import clean, colorize, web_data_dir  # noqa: E402
 from science import dataset  # noqa: E402
 from science.area import series_payload  # noqa: E402
-from science.global_trends import annual_trend, area_weighted_mean  # noqa: E402
+from science.global_trends import annual_trend, area_weighted_mean, hotspots  # noqa: E402
 from science.variables import GLOBAL_VARIABLES  # noqa: E402
 
 OUT = web_data_dir() / "global"
@@ -115,6 +115,7 @@ def export_var(key: str, cfg: dict) -> dict:
     w = np.cos(np.deg2rad(lat))[:, None] * np.ones_like(per_dec)
     share_sig = float(np.sum(w[sig & valid]) / np.sum(w[valid]))
     share_up = float(np.sum(w[sig & valid & (per_dec > 0)]) / np.sum(w[valid]))
+    spots = hotspots(per_dec, sig & valid, lat, lon)
 
     # global series: fixed mask of cells valid in ≥ 90 % of months (avoids coverage artefacts)
     mask = np.mean(~np.isnan(cube), axis=0) >= 0.9
@@ -135,14 +136,25 @@ def export_var(key: str, cfg: dict) -> dict:
         "scale": {"value": {"min": vmin, "max": vmax, "colors": cfg["value"]},
                   "anomaly": {"min": -amax, "max": amax, "colors": cfg["anomaly"]},
                   "trend": {"min": -tmax, "max": tmax, "colors": cfg["trend"], "per": "decade"}},
-        "trend_map": {"share_significant": share_sig, "share_significant_increase": share_up},
+        "trend_map": {"share_significant": share_sig, "share_significant_increase": share_up, "hotspots": spots},
         "verdict": r["verdict"], "robust": series["robust"],
     }
+
+
+def hotspots_only(key: str) -> list[dict]:
+    """Recompute only the hotspots of one variable (no PNG or series rewrite)."""
+    months, lat, lon, cube = load_cube(key, VARS[key]["product"])
+    years, ann = annual(months, cube)
+    tr = annual_trend(ann, years.astype(float))
+    sig = (tr["p_value"] < 0.05) & ~np.isnan(tr["p_value"])
+    return hotspots(tr["sen_slope"] * 10, sig, lat, lon)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--var", choices=list(VARS), action="append")
+    ap.add_argument("--hotspots-only", action="store_true",
+                    help="only (re)compute trend_map.hotspots in the existing manifest")
     args = ap.parse_args()
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     mpath = OUT / "manifest.json"
@@ -150,6 +162,13 @@ def main() -> None:
         "region": {"key": "global", "label": "Global (0.5° grid)", "lat_min": -90, "lat_max": 90,
                    "lon_min": -180, "lon_max": 180},
         "generated_by": "export/build_global_data.py", "variables": []}
+    if args.hotspots_only:
+        for v in manifest["variables"]:
+            if v["key"] in (args.var or VARS):
+                v.setdefault("trend_map", {})["hotspots"] = hotspots_only(v["key"])
+                print(v["key"], "hotspots:", [(h["lat"], h["lng"], round(h["value_per_decade"], 3)) for h in v["trend_map"]["hotspots"]])
+        mpath.write_text(json.dumps(clean(manifest), indent=1))
+        return
     for key in args.var or VARS:
         entry = export_var(key, VARS[key])
         manifest["variables"] = [v for v in manifest["variables"] if v["key"] != key] + [entry]

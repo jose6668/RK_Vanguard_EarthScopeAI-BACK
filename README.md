@@ -22,6 +22,7 @@ flowchart LR
 | `data/sample/` | Muestra de 2° (27 MB) para desarrollo rápido y CI |
 | `data/grids/`, `data/processed/` | Caso de estudio Amazonía central a 0,1° |
 | `pipeline/` | Descarga NASA (`fetch_nasa.py`, `fetch_global.py`), empaquetado (`pack_dataset.py`) y muestra (`make_sample.py`) |
+| `model/` | Red neuronal (U-Net, ensemble) que predice el mes siguiente y encadena hasta 2030: `python model/train_nn.py --seeds 5 --final` (GPU), escribe `build/nn/forecast.npz` con media e incertidumbre |
 | `export/` | Genera las capas PNG y los JSON que muestra la web (los escribe en el repo Frontend) |
 | `app/` | App Streamlit de análisis (respaldo) |
 | `tests/` | Validación con datos sintéticos, el contrato de la API y la integridad del dataset |
@@ -34,11 +35,40 @@ git clone https://github.com/jose6668/RK_Vanguard_EarthScopeAI-BACK.git   # trae
 cd RK_Vanguard_EarthScopeAI-BACK
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-backend.txt          # liviano: API, ciencia y pruebas
+pip install -r requirements-agent.txt            # opcional: agente y voz (Python ≥ 3.10)
 uvicorn api.main:app --reload --port 8000        # http://localhost:8000/docs
 ```
 
 - La primera consulta de cada variable decodifica el dataset a `data/.cache/` (unos segundos); después responde en menos de 1 s.
 - Para descargar datos nuevos de NASA instala `requirements.txt` completo (incluye earthaccess, h5py y pyhdf) y configura Earthdata Login (ver [docs/DATASET.md](docs/DATASET.md)).
+
+### Con Docker
+```bash
+docker build -t earthscope-backend .
+docker run -p 8000:8000 earthscope-backend      # http://localhost:8000/docs
+```
+O con compose, que guarda la cache decodificada en un volumen:
+```bash
+docker compose up --build
+```
+- La imagen trae `data/dataset/` y `data/sample/`; no hay que montar nada.
+- Con internet lento hacia PyPI: `pip download -r requirements-agent.txt -d wheels` (usa la caché de pip) y el build instala desde `wheels/` sin red.
+- `EARTHSCOPE_DATA` funciona igual: `docker run -e EARTHSCOPE_DATA=sample -p 8000:8000 earthscope-backend`.
+- El primer arranque tarda unos segundos mientras decodifica el dataset.
+
+### Agente (LangChain) — opcional
+Necesita `pip install -r requirements-agent.txt` (Python ≥ 3.10) y una API key. Sin eso, el resto de la API funciona igual.
+
+`POST /api/v1/agent/chat` con `{"message", "session", "context"}` responde preguntas usando la ciencia del backend como herramientas: variables, tendencia en un punto o polígono y la predicción de la red neuronal.
+```bash
+echo 'ANTHROPIC_API_KEY=sk-ant-api03-...' > .env      # no se sube a git
+```
+- Sin key responde 503 y la web muestra "agente no disponible"; el resto de la API sigue igual.
+- Modelo: `EARTHSCOPE_AGENT_MODEL` (por defecto `anthropic:claude-sonnet-5-5`). Gratis, sin tarjeta: `EARTHSCOPE_AGENT_MODEL=google_genai:gemini-3.5-flash-lite` con `GOOGLE_API_KEY` de aistudio.google.com. Local: `ollama:qwen3`.
+- Voz: con `ELEVENLABS_API_KEY` (elevenlabs.io) transcribe con Scribe v2, multilingüe y detecta el idioma solo. Sin ella, o si falla, usa Gemini.
+- Nombre de la mascota: `EARTHSCOPE_AGENT_NAME=...` (opcional).
+- Respaldo: `EARTHSCOPE_AGENT_FALLBACK=google_genai:gemini-3.8-flash` (lista separada por comas) se usa si el principal está saturado.
+- Predicción: copia `forecast.npz` de `train_nn.py` a `data/forecast.npz` (o `models/` con Docker), o usa `EARTHSCOPE_FORECAST=/ruta`.
 
 ### Trabajar junto al Frontend
 Clona los dos repos uno al lado del otro:
@@ -61,7 +91,7 @@ Documents/
 ```bash
 export EARTHSCOPE_DATA=sample
 python tests/test_trends.py && python tests/test_whatif.py && python tests/test_global_trends.py
-python tests/test_area.py && python tests/test_api.py
+python tests/test_area.py && python tests/test_api.py && python tests/test_agent.py
 EARTHSCOPE_DATA=full python tests/test_dataset.py
 ```
 GitHub Actions las corre en cada PR (`.github/workflows/ci.yml`).

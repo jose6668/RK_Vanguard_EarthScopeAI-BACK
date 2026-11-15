@@ -20,7 +20,6 @@ import warnings
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]

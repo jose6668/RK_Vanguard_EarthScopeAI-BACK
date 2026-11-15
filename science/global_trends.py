@@ -55,3 +55,40 @@ def area_weighted_mean(grid: np.ndarray, lat: np.ndarray, mask: np.ndarray | Non
     w = np.cos(np.deg2rad(lat))[:, None] * np.ones_like(grid)
     ok = ~np.isnan(grid) if mask is None else (mask & ~np.isnan(grid))
     return float(np.sum(grid[ok] * w[ok]) / np.sum(w[ok])) if ok.any() else float("nan")
+
+
+def _angle(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle angle between two points, degrees (1° ≈ 111 km)."""
+    r = np.deg2rad
+    c = (np.sin(r(lat1)) * np.sin(r(lat2)) + np.cos(r(lat1)) * np.cos(r(lat2)) * np.cos(r(lon1 - lon2)))
+    return float(np.rad2deg(np.arccos(np.clip(c, -1, 1))))
+
+
+def hotspots(per_decade: np.ndarray, significant: np.ndarray, lat: np.ndarray, lon: np.ndarray,
+             block: int = 10, n: int = 6, min_sep_deg: float = 15.0) -> list[dict]:
+    """Where the planet changed the most: blocks of `block` x `block` cells (5° at 0.5°) where at
+    least half of the cells have a significant trend, ranked by the mean change of those cells.
+    Picks up to `n` places at least `min_sep_deg` apart along the sphere (≈ 1 650 km for 15°). Values are in units per decade.
+
+    (Moved here from the web, which approximated it by decoding map colours.)
+    """
+    H, W = per_decade.shape
+    cands = []
+    for by in range(0, H, block):
+        for bx in range(0, W, block):
+            v = per_decade[by:by + block, bx:bx + block]
+            s = significant[by:by + block, bx:bx + block] & np.isfinite(v)
+            if s.sum() < (block * block) / 2:
+                continue
+            cands.append((abs(float(v[s].mean())), float(v[s].mean()),
+                          float(lat[min(by + block // 2, H - 1)]), float(lon[min(bx + block // 2, W - 1)]),
+                          int(s.sum())))
+    cands.sort(reverse=True)
+    out: list[dict] = []
+    for _, val, la, lo, cells in cands:
+        if any(_angle(o["lat"], o["lng"], la, lo) < min_sep_deg for o in out):   # great-circle distance
+            continue
+        out.append({"lat": round(la, 2), "lng": round(lo, 2), "value_per_decade": val, "significant_cells": cells})
+        if len(out) >= n:
+            break
+    return out

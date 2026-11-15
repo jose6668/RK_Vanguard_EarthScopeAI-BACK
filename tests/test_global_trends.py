@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from science.global_trends import annual_trend  # noqa: E402
+from science.global_trends import annual_trend, hotspots  # noqa: E402
 
 rng = np.random.default_rng(0)
 years = np.arange(2001, 2025)
@@ -23,3 +23,15 @@ assert power > 0.95, power
 assert false_pos < 0.08, false_pos
 assert np.isnan(r["sen_slope"][39, 49]) and r["n"][0, 0] == 23
 print(f"OK - slope 0.15 recovered as {slope:.3f}; power {power:.0%}; false positives {false_pos:.1%}")
+
+# hotspots: the strongest significant block comes first, weak or non-significant ones are skipped
+lat = 90 - (np.arange(40) + 0.5) * 0.5
+lon = -180 + (np.arange(50) + 0.5) * 0.5
+per = np.zeros((40, 50)); sig = np.zeros((40, 50), bool)
+per[0:10, 0:10], sig[0:10, 0:10] = 2.0, True          # strong
+per[20:30, 30:40], sig[20:30, 30:40] = -1.0, True      # weaker, opposite sign
+per[30:40, 0:10] = 5.0                                  # strong but NOT significant
+hs = hotspots(per, sig, lat, lon, min_sep_deg=3)
+assert [round(h["value_per_decade"], 1) for h in hs] == [2.0, -1.0], hs
+print("OK - hotspots rank significant blocks only")
+
